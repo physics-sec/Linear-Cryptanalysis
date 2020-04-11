@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from math import fabs, ceil
+import multiprocessing
+import concurrent.futures
 
 initialized = False
 
@@ -322,6 +324,23 @@ def get_xor(plaintext, ciphertext, key, linear_aproximation):
     # return the result of the full xor
     return xor_pt ^ xor_u
 
+def get_biases_for_key_space(keystart, keyend, p_c_pairs, linear_aproximation):
+
+    try:
+        hits = [0] * (keyend - keystart)
+    except OverflowError:
+        exit('the amount of key bits to brute force is too large.')
+
+    # get the result of the aproximation for each possible key
+    for key in range(keystart, keyend):
+        for plaintext, ciphertext in p_c_pairs:
+            xor = get_xor(plaintext, ciphertext, key, linear_aproximation)
+            if xor == 0:
+                hits[keystart - key] += 1
+
+    result = {'start': keystart, 'end': keyend, 'hits': hits}
+    return result
+
 def get_biases(p_c_pairs, linear_aproximation):
     if not initialized: exit('initialize the library first!')
 
@@ -330,20 +349,49 @@ def get_biases(p_c_pairs, linear_aproximation):
     try:
         # get the key's maximum size
         key_max  = 1 << key_bits
-        hits = [0] * key_max
-    except (MemoryError, OverflowError):
+    except MemoryError:
         exit('the amount of key bits to brute force is too large.')
 
-    # get the result of the aproximation for each possible key
-    for key in range(key_max):
-        for plaintext, ciphertext in p_c_pairs:
-            xor = get_xor(plaintext, ciphertext, key, linear_aproximation)
-            if xor == 0:
-                hits[key] += 1
+    num_cores = multiprocessing.cpu_count()
+
+    sub_key_space = key_max // num_cores
+
+    bias_lists = []
+
+    # run in num_cores threads
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_cores) as executor:
+
+        future_list = []
+        # divide the key space into num_cores parts
+        for core in range(num_cores):
+            start = sub_key_space * core
+            end   = start + sub_key_space
+
+            future = executor.submit(get_biases_for_key_space, start, end, p_c_pairs, linear_aproximation)
+            future_list.append(future)
+
+        # get the result for each thread
+        for future in concurrent.futures.as_completed(future_list):
+            bias_lists.append(future.result())
+
+    try:
+        hits = [0] * key_max
+    except OverflowError:
+        exit('the amount of key bits to brute force is too large.')
+
+    # join all the results
+    for result in bias_lists:
+        start = result['start']
+        end   = result['end']
+        array = result['hits']
+        for hit in range(start, end):
+            hits[hit] = array[start - hit]
 
     # calculate the bias for each key
     bias = [ fabs(num_hits - float(NUM_P_C_PAIRS/2)) / float(NUM_P_C_PAIRS) for num_hits in hits ]
+
     return bias
+
 
 if __name__ == "__main__":
     print('import this in from script')
