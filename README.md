@@ -46,29 +46,26 @@ Now, we generate multiple plaintext/ciphertext pairs and use the chosen linear a
 
 ## How to use
 
-Make sure you define this constants:  
-```python
-NUM_P_C_PAIRS = ...
-SBOX_BITS = ...
-NUM_SBOXES = ...
-NUM_ROUNDS = ...
-MIN_BIAS = ...
-MAX_BLOCKS_TO_BF = ...
-```
-Linear approximations with a bias below MIN_BIAS will be discarded.  
-Linear approximations that makes you brute force more than MAX_BLOCKS_TO_BF key 'blocks' will be discarded.
+### Example  
+There is an example in the `break-basic_SPN.py` file.  
 
-and define this functions according to your cipher:
-```python
-def do_sbox(number):
-    ...
+### Functions you may want to use
 
-def do_inv_sbox(number):
-    ...
+`initialize()`  
+Initializes the library with the SPN's properties.  
 
-def do_pbox(state):
-    ...
-```
+`create_bias_table()`  
+Creates the bias table for the sbox.  
+
+`get_linear_aproximations(bias_table)`  
+Returns all possible linear approximations (that respect the MAX_BLOCKS_TO_BF filter).  
+
+`analize_cipher()`  
+Creates the bias table (calling `create_bias_table`) and sorts it (if it is longer than 1000 rows, keeps the best 1000).  
+Then, calls `get_linear_aproximations` and sorts the results (deleting the approximations that have a bias over MIN_BIAS) and returns the sorted list of approximations.  
+
+`get_biases(_c_pairs, linear_aproximation)`  
+Returns a list of of biases. The index of the bias is the key used to obtain such bias.
 
 ## Considerations
 
