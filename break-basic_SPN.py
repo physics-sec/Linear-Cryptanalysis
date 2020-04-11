@@ -61,6 +61,8 @@ def main():
     Nl = ceil( pow(pow(linear_aproximation[0], -1), 2))
     print('\nneeded plaintext/ciphertext pairs (according to Matsui\'s paper):\nNl ≈ 1/(ε^2): {:d}'.format(ceil(Nl)))
 
+    print('\nthe following key blocks will be recovered:{}'.format(' '.join(list(map(str, list(linear_aproximation[2].keys()))))))
+
     # this will be different with another cipher
     key = keyGeneration()
     # k is the last round key
