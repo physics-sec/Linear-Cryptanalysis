@@ -75,7 +75,7 @@ If the bias table is bigger than 1000 rows, the library keeps the best 1000, you
 
 ## More information
 
-To learn about linear cryptanalysis, read [this](https://www.engr.mun.ca/~howard/PAPERS/ldc_tutorial.pdf) awesome paper by Howard M. Heys.
+To learn about linear cryptanalysis, read [this](https://www.engr.mun.ca/~howard/PAPERS/ldc_tutorial.pdf) awesome paper by Howard M. Heys and read *Modern Cryptanalysis: Techniques for Advanced Code Breaking* by Christopher Swenson.
 
 
 ## Credit
