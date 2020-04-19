@@ -45,7 +45,7 @@ def main():
     print('analizing cipher...')
     # there is no need to do this each time
     linear_aproximations = lc_lib.analize_cipher()
-    if len(diff_characteristics) == 0:
+    if len(linear_aproximations) == 0:
         exit('no linear aproximations could be found!')
 
     print('\nbest linear aproximations:')
