@@ -62,7 +62,7 @@ Returns all possible linear approximations (that respect the MAX_BLOCKS_TO_BF fi
 
 `analize_cipher()`  
 Creates the bias table (calling `create_bias_table`) and sorts it (if it is longer than 1000 rows, keeps the best 1000).  
-Then, calls `get_linear_aproximations` and sorts the results (deleting the approximations that have a bias over MIN_BIAS) and returns the sorted list of approximations.  
+Then, calls `get_linear_aproximations` and sorts the results (deleting the approximations that have a bias lower than MIN_BIAS) and returns the sorted list of approximations.  
 
 `get_biases(_c_pairs, linear_aproximation)`  
 Returns a list of of biases. The index of the bias is the key used to obtain such bias.
