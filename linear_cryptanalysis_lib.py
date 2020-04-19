@@ -7,7 +7,7 @@ import concurrent.futures
 
 initialized = False
 
-# i know this is ugly
+# I know this is ugly
 def initialize(num_p_c_pairs, sbox_bits , num_sboxes, num_rounds, min_bias, max_blocks_to_bf, do_sbox_param, do_inv_sbox_param, do_pbox_param):
     global NUM_P_C_PAIRS, SBOX_BITS , NUM_SBOXES, NUM_ROUNDS, MIN_BIAS, MAX_BLOCKS_TO_BF, do_sbox, do_inv_sbox, do_pbox, initialized
     NUM_P_C_PAIRS = num_p_c_pairs
@@ -38,7 +38,6 @@ def create_bias_table():
     if not initialized: exit('initialize the library first!')
 
     tablesize = 1 << SBOX_BITS
-    bias_table = []
    
     table = []
     for x in range(1, tablesize):
@@ -102,7 +101,7 @@ def num_to_bits(num):
     return bits
 
 # this function eliminates the linear approximations that have
-# a bias below the MIN_BIAS threshold and then sorts the result
+# a bias below the MIN_BIAS threshold and then sorts the results
 def sort_linear_aproximations(linear_aproximations):
     if not initialized: exit('initialize the library first!')
 
@@ -262,9 +261,8 @@ def analize_cipher():
     table = create_bias_table()
     table_sorted = sorted(table, key=lambda elem: fabs(elem[2]), reverse=True)
 
-    # take the best 1000 results (so that the following algorithm finishes quickly)
-    # TODO: this could be done in a better way
-    max_size = 1000
+    # take the best max_size results (so that the following algorithm finishes quickly)
+    max_size = 100
     table_len = len(table_sorted)
     if table_len > max_size:
         print('\n[*] reducing bias table size from {:d} to {:d}\n'.format(table_len, max_size))
@@ -394,4 +392,4 @@ def get_biases(p_c_pairs, linear_aproximation):
 
 
 if __name__ == "__main__":
-    print('import this in from script')
+    print('import this from your script')

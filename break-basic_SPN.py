@@ -45,11 +45,16 @@ def main():
     print('analizing cipher...')
     # there is no need to do this each time
     linear_aproximations = lc_lib.analize_cipher()
+    if len(diff_characteristics) == 0:
+        exit('no linear aproximations could be found!')
 
-    print('\nbest 10 linear aproximations:')
+    print('\nbest linear aproximations:')
     # just for demonstration
     for i in range(10):
-        print(linear_aproximations[i])
+        try:
+            print(linear_aproximations[i])
+        except IndexError:
+            break
 
     print('\nthe linear aproximation with the best bias will be used:')
     # you may choose anyone you like
@@ -65,9 +70,14 @@ def main():
 
     # this will be different with another cipher
     key = keyGeneration()
-    # k is the last round key
-    k = key[-3:]
-    k = int(k, 16)
+    k_int = int(key, 16)
+
+    # find which key bits we should obtain
+    key_to_find = 0
+    for block_num in linear_aproximation[2]:
+        k = k_int >> ((NUM_SBOXES - (block_num-1) - 1) * SBOX_BITS)
+        k = k & ((1 << SBOX_BITS) - 1)
+        key_to_find = (key_to_find << SBOX_BITS) | k
 
     # the 'encrypt' function might be different for you
     p_c_pairs = []
@@ -78,7 +88,7 @@ def main():
     # obtain the biases given the p/c pairs and the linear aproximation
     biases = lc_lib.get_biases(p_c_pairs, linear_aproximation)
 
-    # get the key with the highest bias
+    # get the key with the most hits
     maxResult, maxIdx = 0, 0
     for rIdx, result in enumerate(biases):
         if result > maxResult:
@@ -87,9 +97,10 @@ def main():
 
     # maxIdx won't be equal to k if the final sboxes aren't consecutive!
     # in this example, they are
-    if maxIdx == k:
+    if maxIdx == key_to_find:
         print('Success!')
-        print('obtained key bits: {:d}'.format(maxIdx))
+        bits_found = '{:b}'.format(maxIdx).zfill(len(linear_aproximation[2])*SBOX_BITS)
+        print('obtained key bits: {}'.format(bits_found))
     else:
         print('Failure')
 
