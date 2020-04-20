@@ -95,12 +95,19 @@ def main():
             maxResult = result
             maxIdx    = rIdx
 
-    # maxIdx won't be equal to k if the final sboxes aren't consecutive!
-    # in this example, they are
     if maxIdx == key_to_find:
         print('Success!')
         bits_found = '{:b}'.format(maxIdx).zfill(len(linear_aproximation[2])*SBOX_BITS)
-        print('obtained key bits: {}'.format(bits_found))
+        bits_found = [bits_found[i:i+SBOX_BITS] for i in range(0, len(bits_found), SBOX_BITS)]
+
+        blocks_num = list(linear_aproximation[2].keys())
+
+        zipped = list(zip(blocks_num, bits_found))
+
+        print('\nobtained key bits:')
+        for num_block, bits in zipped:
+            print('block {:d}: {}'.format(num_block, bits))
+
     else:
         print('Failure')
 
