@@ -15,12 +15,12 @@ struct state {
   unsigned char first_sbox;
   unsigned char first_x;
   double biasesMult;
-  int cantBiases;
-  int position[NUM_SBOXES][SBOX_BITS];
+  unsigned char cantBiases;
+  unsigned char position[NUM_SBOXES][SBOX_BITS];
 };
 
 struct step {
   unsigned char from;
-  int to[NUM_SBOXES][SBOX_BITS];
+  unsigned char to[NUM_SBOXES][SBOX_BITS];
   struct sbox_aprox path;
 };

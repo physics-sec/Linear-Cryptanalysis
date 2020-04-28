@@ -6,11 +6,17 @@
 int ARR_SIZE = 10000;
 int sbox[] = {0xE, 0x4, 0xD, 0x1, 0x2, 0xF, 0xB, 0x8, 0x3, 0xA, 0x6, 0xC, 0x5, 0x9, 0x0, 0x7};
 int pbox[] = {0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15};
+int sbox_inv[] = {0xE, 3, 8, 1, 0xC, 0xA, 0xF, 7, 0xD, 9, 6, 0xB, 2, 0, 5};
 
 // modify accordingly
 int do_sbox(int number)
 {
     return sbox[number];
+}
+
+int do_inv_sbox(int number)
+{
+    return sbox_inv[number];
 }
 
 // modify accordingly
@@ -96,7 +102,7 @@ void printTable(struct sbox_aprox table[], int tableSize)
 
 // from an sbox and the "output" of a bias y,
 // calculate which sboxs will be reached and in which bits
-void get_destination(int sboxes_reached[NUM_SBOXES][SBOX_BITS], int pos_sbox, int y)
+void get_destination(unsigned char sboxes_reached[NUM_SBOXES][SBOX_BITS], int pos_sbox, int y)
 {
     // pass 'y' through the permutation
     int offset = (NUM_SBOXES - pos_sbox - 1) * SBOX_BITS;
@@ -126,7 +132,7 @@ void get_destination(int sboxes_reached[NUM_SBOXES][SBOX_BITS], int pos_sbox, in
 }
 
 // convert a list of bits to an integer
-int bits_to_num(int inputbits[])
+int bits_to_num(unsigned char inputbits[])
 {
     int Y_input = 0;
     for (int i = 0; i < SBOX_BITS; i++)
@@ -263,7 +269,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
 
             for (int sbox_pos = 0; sbox_pos < NUM_SBOXES; sbox_pos++)
             {
-                int* inputs = curr_state.position[sbox_pos];
+                unsigned char* inputs = curr_state.position[sbox_pos];
                 int Y_input = bits_to_num(inputs); // is int always enough? unsigned long may be better?
                 if (Y_input == 0)
                 {
@@ -450,14 +456,71 @@ struct state** analize_cipher(void)
 }
 
 // get the nth bit of num
-int bit(int num, int n)
+int getBit(int num, int n)
 {
-    return (num >> (SBOX_BITS - n)) & 1;
+    return (num >> (SBOX_BITS - n - 1)) & 1;
 }
 
-void get_xor(void)
+// unsigned long is not always enough, a char array should be used
+int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key, struct state linear_aproximation)
 {
-    return;
+    unsigned long pt, ct, k, v, u;
+    // get the plaintext block
+    pt = plaintext >> ((NUM_SBOXES - linear_aproximation.first_sbox - 1) * SBOX_BITS);
+    pt = pt & ((1 << SBOX_BITS) - 1);
+
+    int xor_pt = 0;
+    for (int bit = 0; bit < SBOX_BITS; bit++)
+    {
+        if ((1 << bit) & linear_aproximation.first_x)
+        {
+            xor_pt = xor_pt ^ getBit(pt, bit);
+        }
+    }
+
+    int cantBlocks = 0;
+    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    {
+        int num = bits_to_num(linear_aproximation.position[sbox]);
+        if (num > 0) cantBlocks++;
+    }
+
+    int keyblock = cantBlocks - 1;
+    int xor_u = 0;
+    // for each final sbox, get the according ciphertext block
+    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    {
+        int sbox_input = bits_to_num(linear_aproximation.position[sbox]);
+        if (sbox_input == 0) continue;
+
+        // get the ciphertext block
+        ct = ciphertext >> ((NUM_SBOXES - sbox - 1) * SBOX_BITS);
+        ct = ct & ((1 << SBOX_BITS) - 1);
+
+        // get the key block that corresponds with the sbox
+        k = key >> (keyblock * SBOX_BITS);
+        k = k & ((1 << SBOX_BITS) - 1);
+        keyblock--;
+
+        // xor the key and the ciphertext to get v (the sbox output)
+        v = ct ^ k;
+
+        // get the sbox input
+        // do_inv_sbox is supposed to calculate the inverse of the substitution, make sure is well defined!
+        u = do_inv_sbox(v);
+
+        // calculate the input of the sbox's part of the xor
+        for (int bit = 0; bit < SBOX_BITS; bit++)
+        {
+            if ((1 << bit) & sbox_input)
+            {
+                xor_u = xor_u ^ getBit(u, bit);
+            }
+        }
+
+        // return the xor between the plaintext and the ciphertext parts
+        return xor_pt ^ xor_u;
+    }
 }
 
 void get_biases_for_key_space(void)
@@ -512,6 +575,9 @@ int main()
     {
         printState(*linear_aproximations[i]);
     }
+    struct state state = *linear_aproximations[0];
+    int result = get_xor(0, 29594, 0, state);
+    printf("result: %d", result);
     freeMem(linear_aproximations);
     return 0;
 }
