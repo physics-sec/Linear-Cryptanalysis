@@ -111,12 +111,12 @@ def sort_linear_aproximations(linear_aproximations):
 
         # calculate the resulting bias following the Piling-Up Lemma
         resulting_bias = 1
-        for x, y, bias in biases:
+        for _, _, bias in biases:
             resulting_bias *= bias
         resulting_bias *= 1 << (len(biases) - 1)
 
         # construct the element of the list resulting list
-        x, y, _ = biases[0]
+        x, _, _ = biases[0]
         _, num_sbox = linear_aproximation['start']
         entry = [resulting_bias, [num_sbox, num_to_bits(x)], linear_aproximation['state']]
         # keep the entry only if has a bias grater than MIN_BIAS
@@ -204,7 +204,6 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
             first_sbox = list(possible_step_per_sbox.keys())[0]
             for possible_step in possible_step_per_sbox[first_sbox]:
                 step = possible_step
-                step['from'] = [depth, first_sbox]
                 possible_steps_combinations.append( [step] )
 
             # for each 'curr_sbox' that is not 'first_sbox'...
@@ -221,7 +220,6 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
 
                     for step_taken in combinations_so_far:
 
-                        possible_step['from'] = [depth, curr_sbox]
                         add_step = step_taken.copy()
                         add_step.append(possible_step)
                         possible_steps_combinations.append( add_step )
@@ -248,8 +246,16 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
                         new_bits = elem['to'][destination]
                         entry['state'][destination] += new_bits
 
-                # update the next_states
-                next_states.append( entry )
+
+                # calculate the resulting bias following the Piling-Up Lemma
+                biases = entry['biases']
+                resulting_bias = 1
+                for _, _, bias in biases:
+                    resulting_bias *= bias
+                resulting_bias *= 1 << (len(biases) - 1)
+                if resulting_bias >= MIN_BIAS:
+                    # update the next_states
+                    next_states.append( entry )
 
 
         return get_linear_aproximations(bias_table, next_states, depth + 1)
@@ -280,7 +286,7 @@ def bit(num, n):
     return (num >> (SBOX_BITS - n)) & 1
 
 def get_xor(plaintext, ciphertext, key, linear_aproximation):
-    bias, p_data, c_data = linear_aproximation
+    _, p_data, c_data = linear_aproximation
 
     # get the plaintext block
     p_block_num, p_bits = p_data
