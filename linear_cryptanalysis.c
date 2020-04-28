@@ -177,10 +177,14 @@ void sort_sbox_laprox(struct sbox_aprox linear_aproximations[], int tableSize)
     qsort(linear_aproximations, tableSize, sizeof(struct sbox_aprox), cmpfunc);
 }
 
+// calculate all the possible linear aproximations given a bias table
 struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tableSize, struct state* current_states[], int depth)
 {
+    // run for NUM_ROUNDS - 1 times
     if (depth == NUM_ROUNDS) return current_states;
 
+    // at the beginnig, only one sbox can be chosen
+    // (this could be done differently)
     if (depth == 1)
     {
         current_states = calloc(ARR_SIZE, sizeof(struct state*));
@@ -189,6 +193,9 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
             printf("Error! memory not allocated.");
             exit(-1);
         }
+
+        // for each bias and each sbox, calculate which sboxes are reached (in the lower layer)
+        // this will be the next step's new initial state
         int index = 0;
         for (int i = 0; i < tableSize; i++)
         {
@@ -220,22 +227,30 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                 }
             }
         }
+        // call the function recursevely with the new current state and new depth
         return get_linear_aproximations(bias_table, tableSize, current_states, 2);
     }
     else
     {
+        // for each set of possible states it will do the following:
+        //   for each sbox that we last reached,
+        //   it will calculate all possible moves according to the bias table.
+        //   then it will calculate all possible the combinations of choices
+        // this set of combinations, will be our next 'current_states'
+        // lastly, it will call itself recursevely
         int len_states = 0;
         while (current_states[len_states++] != NULL);
         len_states--;
 
         struct state** next_states = calloc(ARR_SIZE, sizeof(struct state*));
+        int next_state_pos = 0;
         if (next_states == NULL)
         {
             printf("Error! memory not allocated.");
             exit(-1);
         }
-        int next_state_pos = 0;
 
+        // calculate all possible moves from each 'curr_state'
         for (int current_state_pos = 0; current_state_pos < len_states; current_state_pos++)
         {
             struct state curr_state = *current_states[current_state_pos];
@@ -244,6 +259,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
             int num_possible_step_per_sbox[NUM_SBOXES];
             int num_combinations = 1;
             int cant_start_sboxes = 0;
+            int start_sboxes[NUM_SBOXES];
 
             for (int sbox_pos = 0; sbox_pos < NUM_SBOXES; sbox_pos++)
             {
@@ -260,6 +276,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                 for (int j = 0; j < tableSize; j++)
                 {
                     struct sbox_aprox lin_aprox = bias_table[j];
+                    // only use linear approximations which input matches the current sbox
                     if (lin_aprox.x != Y_input) continue;
 
                     struct step possible_step;
@@ -273,7 +290,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                 if (count > 0)
                 {
                     num_combinations *= count;
-                    cant_start_sboxes++;
+                    start_sboxes[cant_start_sboxes++] = sbox_pos;
                 }                
             }
 
@@ -286,16 +303,6 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
             // combine all the possible choises of each sbox in all possible ways
             // for example, if there are 2 sboxes and each has 4 possible moves
             // then calculate all 16 (4x4) possible combinations.
-
-            int start_sboxes[cant_start_sboxes];
-            int index = 0;
-            for (int i = 0; i < NUM_SBOXES; i++)
-            {
-                if (num_possible_step_per_sbox[i] > 0)
-                {
-                    start_sboxes[index++] = i;
-                }
-            }
 
             struct step possible_steps_combinations[num_combinations][NUM_SBOXES];
 
@@ -354,14 +361,15 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                     }
                 }
 
+                // if the current bias is less than MIN_BIAS, discard the state
                 double biasTotal = new_state->biasesMult * (1 << (new_state->cantBiases - 1));
-                if (biasTotal >= MIN_BIAS)
+                if (biasTotal < MIN_BIAS)
                 {
-                    next_states[next_state_pos++] = new_state;
+                    free(new_state);
+                    continue;
                 }
 
-                //next_states[next_state_pos++] = new_state;
-
+                next_states[next_state_pos++] = new_state;
                 if (next_state_pos == ARR_SIZE)
                 {
                     ARR_SIZE *= 2;
@@ -481,6 +489,22 @@ void printState(struct state state)
     printf("\n");
 }
 
+void freeMem(struct state** linear_aproximations)
+{
+    for (int i = 0; i < ARR_SIZE; i++)
+    {
+        if (linear_aproximations[i] != 0)
+        {
+            free(linear_aproximations[i]);
+        }
+        else
+        {
+            break;
+        }
+    }
+    free(linear_aproximations);
+}
+
 int main()
 {
     struct state** linear_aproximations = analize_cipher();
@@ -488,5 +512,6 @@ int main()
     {
         printState(*linear_aproximations[i]);
     }
+    freeMem(linear_aproximations);
     return 0;
 }
