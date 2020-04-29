@@ -28,6 +28,21 @@ struct step {
   struct sbox_aprox path;
 };
 
+struct partialResult {
+  int keystart;
+  int ketend;
+  double* hits;;
+};
+
+struct threadParam {
+  int keystart;
+  int keyend;
+  int cantBlocks;
+  unsigned long* plaintexts;
+  unsigned long* ciphertexts;
+  struct state linear_aproximation;
+};
+
 struct state** analize_cipher(void);
 void freeMem(struct state** linear_aproximations);
 void printState(struct state state);
