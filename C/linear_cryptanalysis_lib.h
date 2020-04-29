@@ -32,5 +32,6 @@ struct state** analize_cipher(void);
 void freeMem(struct state** linear_aproximations);
 void printState(struct state state);
 double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation);
+int bits_to_num(unsigned char inputbits[]);
 
 #endif

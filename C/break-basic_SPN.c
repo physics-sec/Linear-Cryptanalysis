@@ -38,7 +38,7 @@ int do_pbox(int state)
 int main()
 {
     struct timeval start, end, seed;
-    printf("analizing cipher...\n");
+    printf("analizing cipher...\n\n");
     gettimeofday(&start, NULL);
     struct state** linear_aproximations = analize_cipher();
     gettimeofday(&end, NULL);
@@ -59,8 +59,19 @@ int main()
     srand(seed.tv_usec);
     unsigned char key[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand()};
 
+    // calculate the keybits that should be recovered
     int lastRoundKey = (key[8] << 8) | key[9];
-    int keySearch = lastRoundKey & 0x0fff;
+    int keySearch = 0;
+    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    {
+        int input = bits_to_num(linear_aproximation.position[sbox]);
+        if (input == 0) continue;
+        int keyblock;
+        keyblock = lastRoundKey >> ((NUM_SBOXES - sbox - 1) * SBOX_BITS);
+        keyblock = keyblock & ((1 << SBOX_BITS) - 1);
+        keyblock = keyblock << (((NUM_SBOXES - sbox - 1) * SBOX_BITS));
+        keySearch |= keyblock;
+    }
 
     // generate plaintext/ciphertext pairs
     unsigned long ciphertexts[NUM_P_C_PAIRS];
