@@ -4,35 +4,6 @@
 #include "linear_cryptanalysis_lib.h"
 
 int ARR_SIZE = 10000;
-int sbox[];
-int pbox[];
-int sbox_inv[];
-
-// modify accordingly
-int do_sbox(int number)
-{
-    return sbox[number];
-}
-
-int do_inv_sbox(int number)
-{
-    return sbox_inv[number];
-}
-
-// modify accordingly
-int do_pbox(int state)
-{
-    int state_temp = 0;
-    for (int bitIdx = 0; bitIdx < 16; bitIdx++)
-    {
-        if (state & (1 << bitIdx))
-        {
-            state_temp |= (1 << pbox[bitIdx]);
-        }
-    }
-    state = state_temp;
-    return state;
-}
 
 // retrieve the parity of mask/value
 int apply_mask(int value, int mask)
@@ -183,6 +154,19 @@ void sort_sbox_laprox(struct sbox_aprox linear_aproximations[], int tableSize)
     qsort(linear_aproximations, tableSize, sizeof(struct sbox_aprox), cmpfunc);
 }
 
+struct state** resize(struct state* states[])
+{
+    ARR_SIZE *= 2;
+    states = realloc(states, ARR_SIZE * sizeof(struct state*));
+    if (states == NULL)
+    {
+        printf("Error! memory not allocated.");
+        exit(-1);
+    }
+    memset(states + (int)(ARR_SIZE/2), 0, (int)(ARR_SIZE/2));
+    return states;
+}
+
 // calculate all the possible linear aproximations given a bias table
 struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tableSize, struct state* current_states[], int depth)
 {
@@ -221,16 +205,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                 get_destination(first_state->position, pos_sbox, s_aprox.y);
 
                 current_states[index++] = first_state;
-                if (index == ARR_SIZE)
-                {
-                    current_states = realloc(current_states, 2 * ARR_SIZE * sizeof(struct state*));
-                    ARR_SIZE *= 2;
-                    if (current_states == NULL)
-                    {
-                        printf("Error! memory not allocated.");
-                        exit(-1);
-                    }
-                }
+                if (index == ARR_SIZE) current_states = resize(current_states);
             }
         }
         // call the function recursevely with the new current state and new depth
@@ -376,17 +351,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                 }
 
                 next_states[next_state_pos++] = new_state;
-                if (next_state_pos == ARR_SIZE)
-                {
-                    ARR_SIZE *= 2;
-                    next_states = realloc(next_states, ARR_SIZE * sizeof(struct state*));
-                    if (next_states == NULL)
-                    {
-                        printf("Error! memory not allocated.");
-                        exit(-1);
-                    }
-                    memset(next_states + (int)(ARR_SIZE/2), 0, (int)(ARR_SIZE/2));
-                }
+                if (next_state_pos == ARR_SIZE) next_states = resize(next_states);
             }
             free(current_states[current_state_pos]);
         }
@@ -455,14 +420,15 @@ struct state** analize_cipher(void)
     return linear_aproximations;
 }
 
-// get the nth bit of num
-int getBit(int num, int n)
+// get the bitth bit of num, from left to right
+int getBit(int num, int bit)
 {
-    return (num >> (SBOX_BITS - n - 1)) & 1;
+    return (num >> (SBOX_BITS - bit - 1)) & 1;
 }
 
+// get the xor acoording to the plaintext, the ciphertext and linear aproximation
 // unsigned long is not always enough, a char array should be used
-int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key, struct state linear_aproximation)
+int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key, int cantBlocks, struct state linear_aproximation)
 {
     unsigned long pt, ct, k, v, u;
     // get the plaintext block
@@ -472,17 +438,11 @@ int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key
     int xor_pt = 0;
     for (int bit = 0; bit < SBOX_BITS; bit++)
     {
-        if ((1 << bit) & linear_aproximation.first_x)
+        int i = SBOX_BITS - bit - 1;
+        if ((1 << i) & linear_aproximation.first_x)
         {
             xor_pt = xor_pt ^ getBit(pt, bit);
         }
-    }
-
-    int cantBlocks = 0;
-    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
-    {
-        int num = bits_to_num(linear_aproximation.position[sbox]);
-        if (num > 0) cantBlocks++;
     }
 
     int keyblock = cantBlocks - 1;
@@ -512,25 +472,53 @@ int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key
         // calculate the input of the sbox's part of the xor
         for (int bit = 0; bit < SBOX_BITS; bit++)
         {
-            if ((1 << bit) & sbox_input)
+            int i = SBOX_BITS - bit - 1;
+            if ((1 << i) & sbox_input)
             {
                 xor_u = xor_u ^ getBit(u, bit);
             }
         }
-
-        // return the xor between the plaintext and the ciphertext parts
-        return xor_pt ^ xor_u;
     }
+    // return the xor between the plaintext and the ciphertext parts}
+    return xor_pt ^ xor_u;
 }
 
-void get_biases_for_key_space(void)
+int* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation)
 {
-    return;
-}
+    int cantBlocks = 0;
+    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    {
+        int num = bits_to_num(linear_aproximation.position[sbox]);
+        if (num > 0) cantBlocks++;
+    }
+    int key_bits = cantBlocks * SBOX_BITS;
 
-void get_biases(void)
-{
-    return;
+    unsigned long key_max = 1 << key_bits;
+
+    double* hits = calloc(key_max, sizeof(double));
+    if (hits == NULL)
+    {
+        printf("Error! memory not allocated.");
+        exit(-1);
+    }
+
+    for (int key = 0; key < key_max; key++)
+    {
+        for (int i = 0; i < NUM_P_C_PAIRS; i++)
+        {
+            int xor = get_xor(plaintexts[i], ciphertexts[i], key, cantBlocks, linear_aproximation);
+            if (xor == 0)
+            {
+                hits[key]++;
+            }
+        }
+    }
+
+    for (int hit = 0; hit < key_max; hit++)
+    {
+        hits[hit] = fabs(hits[hit] - (double)(NUM_P_C_PAIRS/(double)2)) / (double)(NUM_P_C_PAIRS);
+    }
+    return hits;
 }
 
 void printState(struct state state)
