@@ -1,4 +1,7 @@
 
+#ifndef LINEARCRYPTLIB
+#define LINEARCRYPTLIB
+
 #define NUM_P_C_PAIRS 10000
 #define SBOX_BITS 4
 #define NUM_SBOXES 4
@@ -24,3 +27,10 @@ struct step {
   unsigned char to[NUM_SBOXES][SBOX_BITS];
   struct sbox_aprox path;
 };
+
+struct state** analize_cipher(void);
+void freeMem(struct state** linear_aproximations);
+void printState(struct state state);
+int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key, struct state linear_aproximation);
+
+#endif

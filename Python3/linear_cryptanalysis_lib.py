@@ -286,6 +286,9 @@ def bit(num, n):
     return (num >> (SBOX_BITS - n)) & 1
 
 def get_xor(plaintext, ciphertext, key, linear_aproximation):
+    print('plaintext ', plaintext)
+    print('ciphertext ', ciphertext)
+    print('key ', key)
     _, p_data, c_data = linear_aproximation
 
     # get the plaintext block
@@ -326,6 +329,7 @@ def get_xor(plaintext, ciphertext, key, linear_aproximation):
         i -= 1
 
     # return the result of the full xor
+    print('xor_pt ^ xor_u',  xor_pt ^ xor_u);exit()
     return xor_pt ^ xor_u
 
 def get_biases_for_key_space(keystart, keyend, p_c_pairs, linear_aproximation):
@@ -356,7 +360,7 @@ def get_biases(p_c_pairs, linear_aproximation):
     except MemoryError:
         exit('the amount of key bits to brute force is too large.')
 
-    num_cores = multiprocessing.cpu_count()
+    num_cores = multiprocessing.cpu_count(); num_cores=1
 
     sub_key_space = key_max // num_cores
 
