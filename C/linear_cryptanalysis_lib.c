@@ -488,7 +488,9 @@ int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key
 
 void* get_biases_for_key_space(void* args)
 {
+    // get the arguments struct
     struct threadParam params = *((struct threadParam*)args);
+
     double* hits = calloc(params.keyend - params.keystart, sizeof(double));
     if (hits == NULL)
     {
@@ -496,10 +498,12 @@ void* get_biases_for_key_space(void* args)
         exit(-1);
     }
 
+    // for each possible key
     for (int key = params.keystart; key < params.keyend; key++)
     {
         for (int i = 0; i < NUM_P_C_PAIRS; i++)
         {
+            // check if the linear aproximation checks out for each pair of plaintext/ciphertext
             int xor = get_xor(params.plaintexts[i], params.ciphertexts[i], key, params.cantBlocks, params.linear_aproximation);
             if (xor == 0)
             {
@@ -508,10 +512,13 @@ void* get_biases_for_key_space(void* args)
         }
     }
 
+    // calculate the resulting bias following the Piling-Up Lemma
     for (int hit = params.keystart; hit < params.keyend; hit++)
     {
         hits[hit - params.keystart] = fabs(hits[hit - params.keystart] - (double)(NUM_P_C_PAIRS/(double)2)) / (double)(NUM_P_C_PAIRS);
     }
+
+    // set the result struct
     struct partialResult* result = calloc(3, sizeof(struct partialResult));
     if (result == NULL)
     {
@@ -526,15 +533,19 @@ void* get_biases_for_key_space(void* args)
 
 double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation)
 {
+    // calculate how many key blocks must be brute forced
     int cantBlocks = 0;
     for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
     {
         int num = bits_to_num(linear_aproximation.position[sbox]);
         if (num > 0) cantBlocks++;
     }
+
+    // calculate how many key bits must be brute forced
     int key_bits = cantBlocks * SBOX_BITS;
     unsigned long key_max = 1 << key_bits;
 
+    // run in num_cores threads
     int num_cores = get_nprocs_conf();
     int sub_key_space = key_max / num_cores;
     pthread_t t_ids[num_cores];
@@ -550,6 +561,7 @@ double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], stru
         param[core].ciphertexts = ciphertexts;
         param[core].linear_aproximation = linear_aproximation;
 
+        // each thread will handle a segment of the key space
         pthread_create(&t_ids[core], NULL, get_biases_for_key_space, (void*)&param[core]);
         pthread_join(t_ids[core], &results[core]);
     }
@@ -561,6 +573,7 @@ double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], stru
         exit(-1);
     }
 
+    // get and combine the result for each thread
     for (int core = 0; core < num_cores; core++)
     {
         struct partialResult result = *results[core];
@@ -573,6 +586,8 @@ double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], stru
         free(result.hits);
         free(results[core]);
     }
+
+    // return the array of biases
     return hits;
 }
 
