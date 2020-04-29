@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>
+#include <sys/sysinfo.h>
 #include "linear_cryptanalysis_lib.h"
 
 int ARR_SIZE = 10000;
@@ -484,17 +486,85 @@ int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key
     return xor_pt ^ xor_u;
 }
 
+void* get_biases_for_key_space(void* args)
+{
+    // get the arguments struct
+    struct threadParam params = *((struct threadParam*)args);
+
+    double* hits = calloc(params.keyend - params.keystart, sizeof(double));
+    if (hits == NULL)
+    {
+        printf("Error! memory not allocated.");
+        exit(-1);
+    }
+
+    // for each possible key
+    for (int key = params.keystart; key < params.keyend; key++)
+    {
+        for (int i = 0; i < NUM_P_C_PAIRS; i++)
+        {
+            // check if the linear aproximation checks out for each pair of plaintext/ciphertext
+            int xor = get_xor(params.plaintexts[i], params.ciphertexts[i], key, params.cantBlocks, params.linear_aproximation);
+            if (xor == 0)
+            {
+                hits[key - params.keystart]++;
+            }
+        }
+    }
+
+    // calculate the resulting bias following the Piling-Up Lemma
+    for (int hit = params.keystart; hit < params.keyend; hit++)
+    {
+        hits[hit - params.keystart] = fabs(hits[hit - params.keystart] - (double)(NUM_P_C_PAIRS/(double)2)) / (double)(NUM_P_C_PAIRS);
+    }
+
+    // set the result struct
+    struct partialResult* result = calloc(3, sizeof(struct partialResult));
+    if (result == NULL)
+    {
+        printf("Error! memory not allocated.");
+        exit(-1);
+    }
+    result->keystart = params.keystart;
+    result->ketend   = params.keyend;
+    result->hits     = hits;
+    return (void*)result;
+}
+
 double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation)
 {
+    // calculate how many key blocks must be brute forced
     int cantBlocks = 0;
     for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
     {
         int num = bits_to_num(linear_aproximation.position[sbox]);
         if (num > 0) cantBlocks++;
     }
-    int key_bits = cantBlocks * SBOX_BITS;
 
+    // calculate how many key bits must be brute forced
+    int key_bits = cantBlocks * SBOX_BITS;
     unsigned long key_max = 1 << key_bits;
+
+    // run in num_cores threads
+    int num_cores = get_nprocs_conf();
+    int sub_key_space = key_max / num_cores;
+    pthread_t t_ids[num_cores];
+    struct threadParam param[num_cores];
+    struct partialResult* results[num_cores];
+
+    for (int core = 0; core < num_cores; core++)
+    {
+        param[core].keystart = sub_key_space * core;
+        param[core].keyend = param[core].keystart + sub_key_space;
+        param[core].cantBlocks = cantBlocks;
+        param[core].plaintexts = plaintexts;
+        param[core].ciphertexts = ciphertexts;
+        param[core].linear_aproximation = linear_aproximation;
+
+        // each thread will handle a segment of the key space
+        pthread_create(&t_ids[core], NULL, get_biases_for_key_space, (void*)&param[core]);
+        pthread_join(t_ids[core], &results[core]);
+    }
 
     double* hits = calloc(key_max, sizeof(double));
     if (hits == NULL)
@@ -503,22 +573,21 @@ double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], stru
         exit(-1);
     }
 
-    for (int key = 0; key < key_max; key++)
+    // get and combine the result for each thread
+    for (int core = 0; core < num_cores; core++)
     {
-        for (int i = 0; i < NUM_P_C_PAIRS; i++)
+        struct partialResult result = *results[core];
+        int start = result.keystart;
+        int end   = result.ketend;
+        for (int i = 0; i < (end - start); i++)
         {
-            int xor = get_xor(plaintexts[i], ciphertexts[i], key, cantBlocks, linear_aproximation);
-            if (xor == 0)
-            {
-                hits[key]++;
-            }
+            hits[start + i] = result.hits[i];
         }
+        free(result.hits);
+        free(results[core]);
     }
 
-    for (int hit = 0; hit < key_max; hit++)
-    {
-        hits[hit] = fabs(hits[hit] - (double)(NUM_P_C_PAIRS/(double)2)) / (double)(NUM_P_C_PAIRS);
-    }
+    // return the array of biases
     return hits;
 }
 
