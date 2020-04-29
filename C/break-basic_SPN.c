@@ -44,14 +44,6 @@ int main()
         printf("no linear aproximations could be found!\n");
         exit(1);
     }
-    printf("\nbest linear aproximations:\n");
-    for (int i = 0; i < 10; i++)
-    {
-        if (linear_aproximations[i] != 0)
-        {
-            printState(*linear_aproximations[i]);
-        }
-    }
 
     printf("\nthe linear aproximation with the best bias will be used\n");
     struct state linear_aproximation = *linear_aproximations[0];

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "linear_cryptanalysis_lib.h"
 
 int ARR_SIZE = 10000;
@@ -483,7 +484,7 @@ int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key
     return xor_pt ^ xor_u;
 }
 
-int* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation)
+double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation)
 {
     int cantBlocks = 0;
     for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
