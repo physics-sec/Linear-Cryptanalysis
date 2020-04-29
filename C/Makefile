@@ -1,5 +1,5 @@
 all: basic_SPN.o linear_cryptanalysis_lib.o break-basic_SPN.o
-	gcc basic_SPN.o linear_cryptanalysis_lib.o break-basic_SPN.o -o break-basic_SPN
+	gcc -pthread basic_SPN.o linear_cryptanalysis_lib.o break-basic_SPN.o -o break-basic_SPN
 
 spn: basic_SPN.c basic_SPN.h
 	gcc -c basic_SPN.c
