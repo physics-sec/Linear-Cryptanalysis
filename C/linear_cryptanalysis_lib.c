@@ -563,7 +563,7 @@ double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], stru
 
         // each thread will handle a segment of the key space
         pthread_create(&t_ids[core], NULL, get_biases_for_key_space, (void*)&param[core]);
-        pthread_join(t_ids[core], &results[core]);
+        pthread_join(t_ids[core], (void*)&results[core]);
     }
 
     double* hits = calloc(key_max, sizeof(double));
