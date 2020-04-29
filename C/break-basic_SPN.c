@@ -1,7 +1,6 @@
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 #include <stdlib.h>
-#include <time.h>
 #include "break-basic_SPN.h"
 #include "basic_SPN.h"
 #include "linear_cryptanalysis_lib.h"
@@ -38,12 +37,12 @@ int do_pbox(int state)
 
 int main()
 {
-    time_t time_start, time_end;
+    struct timeval start, end, seed;
     printf("analizing cipher...\n");
-    time ( &time_start );
+    gettimeofday(&start, NULL);
     struct state** linear_aproximations = analize_cipher();
-    time ( &time_end );
-    printf("done. Seconds elapse:%d\n", time_end - time_start);
+    gettimeofday(&end, NULL);
+    printf("done. took %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
 
     if (linear_aproximations[0] == 0)
     {
@@ -56,7 +55,8 @@ int main()
     printState(linear_aproximation);
 
     // key generation
-    srand(time(NULL));
+    gettimeofday(&seed, NULL);
+    srand(seed.tv_usec);
     unsigned char key[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand()};
 
     int lastRoundKey = (key[8] << 8) | key[9];
@@ -72,11 +72,11 @@ int main()
     }
 
     printf("\nbreaking cipher...\n\n");
-    time ( &time_start );
     // obtain the biases given the p/c pairs and the linear aproximation
+    gettimeofday(&start, NULL);
     double* biases = get_biases(plaintexts, ciphertexts, linear_aproximation);
-    time ( &time_end );
-    printf("done. Seconds elapse:%d\n", time_end - time_start);
+    gettimeofday(&end, NULL);
+    printf("done. took %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
 
     // get the key with the most hits
     double maxResult = 0;
