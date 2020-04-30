@@ -5,7 +5,7 @@
 
 This repository presents a linear cryptanalysis library that tries to break SPN ciphers in a fully automatic way.  
 
-Right now it only supports SPNs with just one type of sbox, but extending it to support multiple types of sbox should be easy.
+Right now it only supports SPNs with just one type of sbox, but extending it to support multiple types of sbox should be relatively easy.
 
 
 ## How does it work?
@@ -47,31 +47,38 @@ Now, we generate multiple plaintext/ciphertext pairs and use the chosen linear a
 ## How to use
 
 ### Example  
-There are two examples. The `break-basic_SPN.py` and the `break-easy1.py` file.  
+There is a Python3 and a C implementation.  
+Python3:
+  - There are two examples. The `break-basic_SPN.py` and the `break-easy1.py` file.  
+
+C:
+  - There is just one example (`break-basic_SPN`). To compile it, run `make` inside the *C/* directory.
+
+The C implementation is, of course, much faster.
 
 ### Functions you may want to use
 
 `initialize()`  
-Initializes the library with the SPN's properties.  
+Initializes the library with the SPN's properties. (In C you have to change the constants in the `linear_cryptanalysis_lib.h` file.  
 
-`create_bias_table()`  
+`create_bias_table`  
 Creates the bias table for the sbox.  
 
-`get_linear_aproximations(bias_table)`  
+`get_linear_aproximations`  
 Returns all possible linear approximations (that respect the MAX_BLOCKS_TO_BF filter).  
 
-`analize_cipher()`  
+`analize_cipher`  
 Creates the bias table (calling `create_bias_table`) and sorts it (if it is longer than 1000 rows, keeps the best 1000).  
 Then, calls `get_linear_aproximations` and sorts the results (deleting the approximations that have a bias lower than MIN_BIAS) and returns the sorted list of approximations.  
 
-`get_biases(_c_pairs, linear_aproximation)`  
+`get_biases`  
 Returns a list of of biases. The index of the bias is the key used to obtain such bias.
 
 ## Considerations
 
 Keep in mind that you might use multiple linear approximations to recover different bits of the last round key.  
 
-If the bias table is bigger than 1000 rows, the library keeps the best 1000, you might want to proceed differently.  
+If you want to addapt the C implementation to breake another cipher, don't forget to update constants in the `linear_cryptanalysis_lib.h` file.  
 
 ## More information
 
@@ -80,4 +87,4 @@ To learn about linear cryptanalysis, read [this](https://www.engr.mun.ca/~howard
 
 ## Credit
 
-Thanks to [hkscy](https://github.com/hkscy/Basic-SPN-cryptanalysis) for the great *Basic SPN* implementation.
+Thanks to [hkscy](https://github.com/hkscy/Basic-SPN-cryptanalysis) for the great *Basic SPN* implementation in Python3.
