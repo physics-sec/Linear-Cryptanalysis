@@ -7,7 +7,7 @@
 #include <sys/sysinfo.h>
 #include "linear_cryptanalysis_lib.h"
 
-uint64_t ARR_SIZE = 10000;
+uint32_t ARR_SIZE = 3000;
 
 // retrieve the parity of mask/value
 uint8_t apply_mask(uint64_t value, uint64_t mask)
@@ -184,6 +184,9 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], uint64_t
         for (uint64_t i = 0; i < tableSize; i++)
         {
             struct sbox_aprox s_aprox = bias_table[i];
+            // if the current bias is less than MIN_BIAS, discard it
+            if (s_aprox.bias < MIN_BIAS) continue;
+
             for (uint8_t pos_sbox = 0; pos_sbox < NUM_SBOXES; pos_sbox++)
             {
                 struct state* first_state = calloc(1, sizeof(struct state));

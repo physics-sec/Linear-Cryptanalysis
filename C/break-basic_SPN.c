@@ -103,11 +103,11 @@ int main()
 
     if (maxIdx == keySearch)
     {
-        printf("key found: %d\n", maxIdx);
+        printf("\nkey found: %d\n", maxIdx);
     }
     else
     {
-        printf("Fail!\n");
+        printf("\nFail!\n");
     }
 
     freeMem(linear_aproximations);
