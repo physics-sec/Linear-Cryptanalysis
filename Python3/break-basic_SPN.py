@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import time
 from basic_SPN import *
 import linear_cryptanalysis_lib as lc_lib
 from math import fabs, ceil
@@ -24,7 +25,7 @@ def do_pbox(state):
 
 def main():
 
-    NUM_P_C_PAIRS = 5000
+    NUM_P_C_PAIRS = 10000
     SBOX_BITS  = 4
     NUM_SBOXES = 4
     NUM_ROUNDS = 4
@@ -44,7 +45,10 @@ def main():
 
     print('analizing cipher...')
     # there is no need to do this each time
+    start = time.time_ns()
     linear_aproximations = lc_lib.analize_cipher()
+    end = time.time_ns()
+    print("done, took {:d} ns".format(end - start))
     if len(linear_aproximations) == 0:
         exit('no linear aproximations could be found!')
 
@@ -86,7 +90,10 @@ def main():
 
     print('\nbreaking cipher...\n')
     # obtain the biases given the p/c pairs and the linear aproximation
+    start = time.time_ns()
     biases = lc_lib.get_biases(p_c_pairs, linear_aproximation)
+    end = time.time_ns()
+    print("done, took {:d} ns".format(end - start))
 
     # get the key with the most hits
     maxResult, maxIdx = 0, 0
