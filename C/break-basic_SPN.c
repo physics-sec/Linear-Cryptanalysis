@@ -38,7 +38,7 @@ int main()
     gettimeofday(&start, NULL);
     struct state** linear_aproximations = analize_cipher();
     gettimeofday(&end, NULL);
-    printf("done. took %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    printf("done. took %lu μs\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
 
     if (linear_aproximations[0] == 0)
     {
@@ -85,7 +85,7 @@ int main()
     gettimeofday(&start, NULL);
     double* biases = get_biases(plaintexts, ciphertexts, linear_aproximation);
     gettimeofday(&end, NULL);
-    printf("done. took %lu us\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
+    printf("done. took %lu μs\n", (end.tv_sec - start.tv_sec) * 1000000 + end.tv_usec - start.tv_usec);
 
     // get the key with the most hits
     double maxResult = 0;

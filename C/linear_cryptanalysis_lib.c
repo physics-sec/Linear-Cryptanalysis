@@ -431,7 +431,6 @@ uint64_t get_xor(uint64_t plaintext, uint64_t ciphertext, uint64_t key, uint64_t
     // get the plaintext block
     pt = plaintext >> ((NUM_SBOXES - linear_aproximation.first_sbox - 1) * SBOX_BITS);
     pt = pt & ((1 << SBOX_BITS) - 1);
-
     uint64_t xor_pt = 0;
     for (uint16_t bit = 0; bit < SBOX_BITS; bit++)
     {
@@ -541,6 +540,8 @@ double* get_biases(uint64_t plaintexts[], uint64_t ciphertexts[], struct state l
 
     // run in num_cores threads
     uint8_t num_cores = get_nprocs_conf();
+    num_cores *= 2;
+    printf("using %d threads\n\n", num_cores);
     uint64_t sub_key_space = key_max / num_cores;
     pthread_t t_ids[num_cores];
     struct threadParam param[num_cores];
@@ -554,9 +555,11 @@ double* get_biases(uint64_t plaintexts[], uint64_t ciphertexts[], struct state l
         param[core].plaintexts = plaintexts;
         param[core].ciphertexts = ciphertexts;
         param[core].linear_aproximation = linear_aproximation;
-
         // each thread will handle a segment of the key space
         pthread_create(&t_ids[core], NULL, get_biases_for_key_space, (void*)&param[core]);
+    }
+    for (uint8_t core = 0; core < num_cores; core++)
+    {
         pthread_join(t_ids[core], (void*)&results[core]);
     }
 

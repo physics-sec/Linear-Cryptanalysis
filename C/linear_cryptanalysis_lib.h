@@ -7,7 +7,6 @@
 #define NUM_SBOXES 4
 #define NUM_ROUNDS 4
 #define MIN_BIAS 0.008
-#define MAX_BLOCKS_TO_BF 3
 
 struct sbox_aprox {
   uint8_t x, y;
