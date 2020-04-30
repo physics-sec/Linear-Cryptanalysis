@@ -2,15 +2,15 @@
 #include <stdio.h>
 #include "basic_SPN.h"
 
-int pbox[]     = {0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15};
-int sbox[]     = {0xE, 0x4, 0xD, 0x1, 0x2, 0xF, 0xB, 0x8, 0x3, 0xA, 0x6, 0xC, 0x5, 0x9, 0x0, 0x7};
-int sbox_inv[] = {0xE, 3, 4, 8, 1, 0xC, 0xA, 0xF, 7, 0xD, 9, 6, 0xB, 2,0 , 5};
+uint8_t pbox[]     = {0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15};
+uint8_t sbox[]     = {0xE, 0x4, 0xD, 0x1, 0x2, 0xF, 0xB, 0x8, 0x3, 0xA, 0x6, 0xC, 0x5, 0x9, 0x0, 0x7};
+uint8_t sbox_inv[] = {0xE, 3, 4, 8, 1, 0xC, 0xA, 0xF, 7, 0xD, 9, 6, 0xB, 2,0 , 5};
 
-uint16_t _apply_sbox(uint16_t state, int* type_sbox)
+uint16_t _apply_sbox(uint16_t state, uint8_t* type_sbox)
 {
     uint16_t newState, temp;
     newState = 0;    
-    for (int idx = 0; idx < 4; idx++)
+    for (uint8_t idx = 0; idx < 4; idx++)
     {
         temp = (state & (0xf << (idx * 4))) >> (idx * 4);
         temp = type_sbox[temp];
@@ -29,12 +29,12 @@ uint16_t apply_sbox_inv(uint16_t state)
     return _apply_sbox(state, sbox_inv);
 }
 
-uint16_t encrypt(uint16_t pt, unsigned char k[])
+uint16_t encrypt(uint16_t pt, uint8_t k[])
 {
     uint16_t state = pt;
     uint16_t subkey;
 
-    for(int round = 0; round < 3; round++)
+    for(uint8_t round = 0; round < 3; round++)
     {
         subkey = (k[round*2] << 8) | k[1 + round*2];
 
@@ -46,7 +46,7 @@ uint16_t encrypt(uint16_t pt, unsigned char k[])
 
         // Permute the state bitwise (2)
         uint16_t state_temp = 0;
-        for (int bitIdx = 0; bitIdx < 16; bitIdx++)
+        for (uint8_t bitIdx = 0; bitIdx < 16; bitIdx++)
         {
             if(state & (1 << bitIdx))
             {
@@ -70,7 +70,7 @@ uint16_t encrypt(uint16_t pt, unsigned char k[])
     return state;
 }
 
-uint16_t decrypt(uint16_t ct, unsigned char k[])
+uint16_t decrypt(uint16_t ct, uint8_t k[])
 {
     uint16_t state = ct;
     uint16_t subkey;
@@ -83,7 +83,7 @@ uint16_t decrypt(uint16_t ct, unsigned char k[])
     state = apply_sbox_inv(state);
 
     // Undo first 3 rounds of simple SPN cipher
-    for (int round = 3; round > 0; round--)
+    for (uint8_t round = 3; round > 0; round--)
     {
         subkey = (k[round*2] << 8) | k[1 + round*2];
 
@@ -92,7 +92,7 @@ uint16_t decrypt(uint16_t ct, unsigned char k[])
 
         // Un-permute the state bitwise (2)
         uint16_t state_temp = 0;
-        for (int bitIdx = 0; bitIdx < 16; bitIdx++)
+        for (uint8_t bitIdx = 0; bitIdx < 16; bitIdx++)
         {
             if(state & (1 << bitIdx))
             {

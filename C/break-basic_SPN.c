@@ -1,31 +1,27 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <stdlib.h>
-#include "break-basic_SPN.h"
 #include "basic_SPN.h"
 #include "linear_cryptanalysis_lib.h"
 
-int pbox[];
-int sbox[];
-int sbox_inv[];
-
 // modify accordingly
-int do_sbox(int number)
+uint16_t do_sbox(uint16_t number)
 {
     return sbox[number];
 }
 
 // modify accordingly
-int do_inv_sbox(int number)
+uint16_t do_inv_sbox(uint16_t number)
 {
     return sbox_inv[number];
 }
 
 // modify accordingly
-int do_pbox(int state)
+uint16_t do_pbox(uint16_t state)
 {
-    int newSstate = 0;
-    for (int bitIdx = 0; bitIdx < 16; bitIdx++)
+    uint16_t newSstate = 0;
+    for (uint8_t bitIdx = 0; bitIdx < 16; bitIdx++)
     {
         if (state & (1 << bitIdx))
         {
@@ -57,16 +53,18 @@ int main()
     // key generation
     gettimeofday(&seed, NULL);
     srand(seed.tv_usec);
-    unsigned char key[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+    uint8_t key[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand(), rand()};
 
     // calculate the keybits that should be recovered
-    int lastRoundKey = (key[8] << 8) | key[9];
-    int keySearch = 0;
-    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    uint16_t lastRoundKey = (key[8] << 8) | key[9];
+    uint16_t keySearch = 0;
+    uint8_t numKeyBlocks = 0;
+    for (uint8_t sbox = 0; sbox < NUM_SBOXES; sbox++)
     {
-        int input = bits_to_num(linear_aproximation.position[sbox]);
+        uint64_t input = bits_to_num(linear_aproximation.position[sbox]);
         if (input == 0) continue;
-        int keyblock;
+        numKeyBlocks++;
+        uint16_t keyblock;
         keyblock = lastRoundKey >> ((NUM_SBOXES - sbox - 1) * SBOX_BITS);
         keyblock = keyblock & ((1 << SBOX_BITS) - 1);
         keyblock = keyblock << (((NUM_SBOXES - sbox - 1) * SBOX_BITS));
@@ -74,9 +72,9 @@ int main()
     }
 
     // generate plaintext/ciphertext pairs
-    unsigned long ciphertexts[NUM_P_C_PAIRS];
-    unsigned long plaintexts[NUM_P_C_PAIRS];
-    for (int i = 0; i < NUM_P_C_PAIRS; i++)
+    uint64_t ciphertexts[NUM_P_C_PAIRS];
+    uint64_t plaintexts[NUM_P_C_PAIRS];
+    for (uint32_t i = 0; i < NUM_P_C_PAIRS; i++)
     {
         ciphertexts[i] = encrypt(i, key);
         plaintexts[i]  = i;
@@ -91,9 +89,10 @@ int main()
 
     // get the key with the most hits
     double maxResult = 0;
-    int maxIdx = 0;
+    uint64_t maxIdx = 0;
 
-    for (int i = 0; i < 4096; i ++)
+    uint64_t maxKey = 1 << (numKeyBlocks * SBOX_BITS);
+    for (int i = 0; i < maxKey; i ++)
     {
         if (biases[i] > maxResult)
         {

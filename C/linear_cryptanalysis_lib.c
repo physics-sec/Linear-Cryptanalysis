@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,14 +7,14 @@
 #include <sys/sysinfo.h>
 #include "linear_cryptanalysis_lib.h"
 
-int ARR_SIZE = 10000;
+uint64_t ARR_SIZE = 10000;
 
 // retrieve the parity of mask/value
-int apply_mask(int value, int mask)
+uint8_t apply_mask(uint64_t value, uint64_t mask)
 {
-    int interValue = value & mask;
-    int total = 0;
-    int temp;
+    uint64_t interValue = value & mask;
+    uint8_t  total = 0;
+    uint64_t temp;
     while (interValue > 0)
     {
         temp = interValue & 1;
@@ -28,21 +29,21 @@ int apply_mask(int value, int mask)
 
 // create the bias table for the sbox
 // (if there are multiple sboxs, then this won't work)
-int create_bias_table(struct sbox_aprox table[], int tablesize){
-    int x, y, num;
-    int index = 0;
+uint64_t create_bias_table(struct sbox_aprox table[], uint64_t tablesize){
+    uint64_t x, y, num;
+    uint64_t index = 0;
     for (x = 1; x < tablesize; x++)
     {
         for (y = 1; y < tablesize; y++)
         {
-            int matches = 0;
+            uint64_t matches = 0;
             for (num = 0; num < tablesize; num++)
             {
                 // calculate the parity of the number before going in the sbox
-                int in_mask  = apply_mask(num, x);
+                uint64_t in_mask  = apply_mask(num, x);
                 // calculate the parity of the number after going out the sbox
                 // do_sbox is supposed to perform the substitution, make sure is well defined!
-                int out_mask = apply_mask(do_sbox(num), y);
+                uint64_t out_mask = apply_mask(do_sbox(num), y);
                 // if the parity is the same in both cases, add a match
                 if (in_mask == out_mask)
                 {
@@ -65,33 +66,23 @@ int create_bias_table(struct sbox_aprox table[], int tablesize){
     return index;
 }
 
-void printTable(struct sbox_aprox table[], int tableSize)
-{
-    printf("table:\n");
-    for (int i = 0; i < tableSize; i++)
-    {
-        printf("x:%d y:%d bias:%f\n", table[i].x, table[i].y, table[i].bias);
-    }
-}
-
 // from an sbox and the "output" of a bias y,
 // calculate which sboxs will be reached and in which bits
-void get_destination(unsigned char sboxes_reached[NUM_SBOXES][SBOX_BITS], int pos_sbox, int y)
+void get_destination(uint8_t sboxes_reached[NUM_SBOXES][SBOX_BITS], uint64_t pos_sbox, uint64_t y)
 {
     // pass 'y' through the permutation
-    int offset = (NUM_SBOXES - pos_sbox - 1) * SBOX_BITS;
-    int Y = y << offset;
+    uint64_t offset = (NUM_SBOXES - pos_sbox - 1) * SBOX_BITS;
+    uint64_t Y = y << offset;
     // do_pbox is supposed to transpose the state, make sure is well defined!
-    int permuted = do_pbox(Y);
+    uint64_t permuted = do_pbox(Y);
 
-    //int sboxes_reached[NUM_SBOXES][SBOX_BITS];
     // sboxes go from 1 to NUM_SBOXES from left to right
     // bits go from 1 to SBOX_BITS from left to right
-    for (int sbox = 1; sbox <= NUM_SBOXES; sbox++)
+    for (uint8_t sbox = 1; sbox <= NUM_SBOXES; sbox++)
     {
-        for (int bit = 0; bit < SBOX_BITS; bit++)
+        for (uint16_t bit = 0; bit < SBOX_BITS; bit++)
         {
-            int bits_offset = ((NUM_SBOXES - (sbox-1) - 1) * SBOX_BITS) + bit;
+            uint64_t bits_offset = ((NUM_SBOXES - (sbox-1) - 1) * SBOX_BITS) + bit;
             // if 'sbox' has a 1 in the position 'bit' then take note of that
             if ((permuted & (1 << bits_offset)) != 0)
             {
@@ -106,10 +97,10 @@ void get_destination(unsigned char sboxes_reached[NUM_SBOXES][SBOX_BITS], int po
 }
 
 // convert a list of bits to an integer
-int bits_to_num(unsigned char inputbits[])
+uint64_t bits_to_num(uint8_t inputbits[])
 {
-    int Y_input = 0;
-    for (int i = 0; i < SBOX_BITS; i++)
+    uint64_t Y_input = 0;
+    for (uint16_t i = 0; i < SBOX_BITS; i++)
     {
         if (inputbits[i] == 1)
         {
@@ -120,9 +111,9 @@ int bits_to_num(unsigned char inputbits[])
 }
 
 // convert an integer to a list of it's bits
-void num_to_bits(unsigned num, int bits[])
+void num_to_bits(unsigned num, uint64_t bits[])
 {
-    for (int index = 0; index < SBOX_BITS; index++)
+    for (uint16_t index = 0; index < SBOX_BITS; index++)
     {
         if (((1 << index) & num) != 0)
         {
@@ -152,7 +143,7 @@ int cmpfunc(const void * a, const void * b)
     }
 }
 
-void sort_sbox_laprox(struct sbox_aprox linear_aproximations[], int tableSize)
+void sort_sbox_laprox(struct sbox_aprox linear_aproximations[], uint64_t tableSize)
 {
     qsort(linear_aproximations, tableSize, sizeof(struct sbox_aprox), cmpfunc);
 }
@@ -171,7 +162,7 @@ struct state** resize(struct state* states[])
 }
 
 // calculate all the possible linear aproximations given a bias table
-struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tableSize, struct state* current_states[], int depth)
+struct state** get_linear_aproximations(struct sbox_aprox bias_table[], uint64_t tableSize, struct state* current_states[], uint64_t depth)
 {
     // run for NUM_ROUNDS - 1 times
     if (depth == NUM_ROUNDS) return current_states;
@@ -189,11 +180,11 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
 
         // for each bias and each sbox, calculate which sboxes are reached (in the lower layer)
         // this will be the next step's new initial state
-        int index = 0;
-        for (int i = 0; i < tableSize; i++)
+        uint64_t index = 0;
+        for (uint64_t i = 0; i < tableSize; i++)
         {
             struct sbox_aprox s_aprox = bias_table[i];
-            for (int pos_sbox = 0; pos_sbox < NUM_SBOXES; pos_sbox++)
+            for (uint8_t pos_sbox = 0; pos_sbox < NUM_SBOXES; pos_sbox++)
             {
                 struct state* first_state = calloc(1, sizeof(struct state));
                 if (first_state == NULL)
@@ -222,12 +213,12 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
         //   then it will calculate all possible the combinations of choices
         // this set of combinations, will be our next 'current_states'
         // lastly, it will call itself recursevely
-        int len_states = 0;
+        uint64_t len_states = 0;
         while (current_states[len_states++] != NULL);
         len_states--;
 
         struct state** next_states = calloc(ARR_SIZE, sizeof(struct state*));
-        int next_state_pos = 0;
+        uint64_t next_state_pos = 0;
         if (next_states == NULL)
         {
             printf("Error! memory not allocated.");
@@ -235,20 +226,20 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
         }
 
         // calculate all possible moves from each 'curr_state'
-        for (int current_state_pos = 0; current_state_pos < len_states; current_state_pos++)
+        for (uint64_t current_state_pos = 0; current_state_pos < len_states; current_state_pos++)
         {
             struct state curr_state = *current_states[current_state_pos];
 
             struct step possible_step_per_sbox[NUM_SBOXES][tableSize];
-            int num_possible_step_per_sbox[NUM_SBOXES];
-            int num_combinations = 1;
-            int cant_start_sboxes = 0;
-            int start_sboxes[NUM_SBOXES];
+            uint64_t num_possible_step_per_sbox[NUM_SBOXES];
+            uint64_t num_combinations = 1;
+            uint64_t cant_start_sboxes = 0;
+            uint8_t  start_sboxes[NUM_SBOXES];
 
-            for (int sbox_pos = 0; sbox_pos < NUM_SBOXES; sbox_pos++)
+            for (uint8_t sbox_pos = 0; sbox_pos < NUM_SBOXES; sbox_pos++)
             {
-                unsigned char* inputs = curr_state.position[sbox_pos];
-                int Y_input = bits_to_num(inputs); // is int always enough? unsigned long may be better?
+                uint8_t* inputs = curr_state.position[sbox_pos];
+                uint64_t Y_input = bits_to_num(inputs); // is uint64_t always enough? uint64_t may be better?
                 if (Y_input == 0)
                 {
                     // this sbox has no inputs
@@ -256,8 +247,8 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                     continue;
                 }
 
-                int count = 0;
-                for (int j = 0; j < tableSize; j++)
+                uint64_t count = 0;
+                for (uint64_t j = 0; j < tableSize; j++)
                 {
                     struct sbox_aprox lin_aprox = bias_table[j];
                     // only use linear approximations which input matches the current sbox
@@ -290,18 +281,18 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
 
             struct step possible_steps_combinations[num_combinations][NUM_SBOXES];
 
-            for (int comb_num = 0; comb_num < num_combinations; comb_num++)
+            for (uint64_t comb_num = 0; comb_num < num_combinations; comb_num++)
             {
                 possible_steps_combinations[comb_num][start_sboxes[0]] = possible_step_per_sbox[start_sboxes[0]][comb_num % num_possible_step_per_sbox[start_sboxes[0]]];
-                for (int sbox = 1; sbox < cant_start_sboxes; sbox++)
+                for (uint64_t sbox = 1; sbox < cant_start_sboxes; sbox++)
                 {
-                    int real_sbox = start_sboxes[sbox];
-                    int mod = 1;
-                    for (int prev_sbox = 0; prev_sbox < sbox; prev_sbox++)
+                    uint64_t real_sbox = start_sboxes[sbox];
+                    uint64_t mod = 1;
+                    for (uint64_t prev_sbox = 0; prev_sbox < sbox; prev_sbox++)
                     {
                         mod *= num_possible_step_per_sbox[start_sboxes[prev_sbox]];
                     }
-                    int index = (comb_num / mod) % num_possible_step_per_sbox[real_sbox];
+                    uint64_t index = (comb_num / mod) % num_possible_step_per_sbox[real_sbox];
                     possible_steps_combinations[comb_num][real_sbox] = possible_step_per_sbox[real_sbox][index];
                 }
             }
@@ -309,7 +300,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
             // now, for each combination, check to which sboxes we reached and what are their inputs
             // this will be the next state
 
-            for (int comb = 0; comb < num_combinations; comb++)
+            for (uint64_t comb = 0; comb < num_combinations; comb++)
             {
                 struct step* combination = possible_steps_combinations[comb];
                 struct state* new_state = calloc(1, sizeof(struct state));
@@ -324,8 +315,8 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                 new_state->biasesMult = curr_state.biasesMult;
                 new_state->cantBiases = curr_state.cantBiases;
 
-                int new_biases = 0;
-                for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+                uint64_t new_biases = 0;
+                for (uint8_t sbox = 0; sbox < NUM_SBOXES; sbox++)
                 {
                     if (num_possible_step_per_sbox[sbox] == 0) continue;
 
@@ -333,9 +324,9 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], int tabl
                     new_state->biasesMult *= step.path.bias;
                     new_state->cantBiases += 1;
 
-                    for (int sb = 0; sb < NUM_SBOXES; sb++)
+                    for (uint8_t sb = 0; sb < NUM_SBOXES; sb++)
                     {
-                        for (int bit = 0; bit < SBOX_BITS; bit++)
+                        for (uint16_t bit = 0; bit < SBOX_BITS; bit++)
                         {
                             if (step.to[sb][bit] == 1)
                             {
@@ -388,7 +379,7 @@ int cmpLinearAprox(const void * a, const void * b)
 
 void sort_linear_aproximations(struct state* linear_aproximations[])
 {
-    int size = 0;
+    uint64_t size = 0;
     while (1)
     {
         if (linear_aproximations[size] == 0)
@@ -401,17 +392,17 @@ void sort_linear_aproximations(struct state* linear_aproximations[])
         }
         size++;
     }
-    qsort(linear_aproximations, size, sizeof(struct state*), cmpLinearAprox);
+    qsort(linear_aproximations, (int)size, sizeof(struct state*), cmpLinearAprox);
 }
 
 struct state** analize_cipher(void)
 {
-    int tablesize = 1 << SBOX_BITS;
+    uint64_t tablesize = 1 << SBOX_BITS;
     struct sbox_aprox table [tablesize*tablesize];
-    int tableSize = create_bias_table(table, tablesize);
+    uint64_t tableSize = create_bias_table(table, tablesize);
 
     sort_sbox_laprox(table, tableSize);
-    int maxsize = 100;
+    uint16_t maxsize = 100;
     if (tableSize > maxsize)
     {
         printf("\n[*] reducing bias table size from %d to %d\n", tableSize, maxsize);
@@ -424,36 +415,36 @@ struct state** analize_cipher(void)
 }
 
 // get the bitth bit of num, from left to right
-int getBit(int num, int bit)
+uint8_t getBit(uint64_t num, uint64_t bit)
 {
     return (num >> (SBOX_BITS - bit - 1)) & 1;
 }
 
 // get the xor acoording to the plaintext, the ciphertext and linear aproximation
-// unsigned long is not always enough, a char array should be used
-int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key, int cantBlocks, struct state linear_aproximation)
+// uint64_t is not always enough, a char array should be used
+uint64_t get_xor(uint64_t plaintext, uint64_t ciphertext, uint64_t key, uint64_t cantBlocks, struct state linear_aproximation)
 {
-    unsigned long pt, ct, k, v, u;
+    uint64_t pt, ct, k, v, u;
     // get the plaintext block
     pt = plaintext >> ((NUM_SBOXES - linear_aproximation.first_sbox - 1) * SBOX_BITS);
     pt = pt & ((1 << SBOX_BITS) - 1);
 
-    int xor_pt = 0;
-    for (int bit = 0; bit < SBOX_BITS; bit++)
+    uint64_t xor_pt = 0;
+    for (uint16_t bit = 0; bit < SBOX_BITS; bit++)
     {
-        int i = SBOX_BITS - bit - 1;
+        uint16_t i = SBOX_BITS - bit - 1;
         if ((1 << i) & linear_aproximation.first_x)
         {
             xor_pt = xor_pt ^ getBit(pt, bit);
         }
     }
 
-    int keyblock = cantBlocks - 1;
-    int xor_u = 0;
+    uint64_t keyblock = cantBlocks - 1;
+    uint64_t xor_u = 0;
     // for each final sbox, get the according ciphertext block
-    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    for (uint8_t sbox = 0; sbox < NUM_SBOXES; sbox++)
     {
-        int sbox_input = bits_to_num(linear_aproximation.position[sbox]);
+        uint64_t sbox_input = bits_to_num(linear_aproximation.position[sbox]);
         if (sbox_input == 0) continue;
 
         // get the ciphertext block
@@ -473,9 +464,9 @@ int get_xor(unsigned long plaintext, unsigned long ciphertext, unsigned long key
         u = do_inv_sbox(v);
 
         // calculate the input of the sbox's part of the xor
-        for (int bit = 0; bit < SBOX_BITS; bit++)
+        for (uint16_t bit = 0; bit < SBOX_BITS; bit++)
         {
-            int i = SBOX_BITS - bit - 1;
+            uint16_t i = SBOX_BITS - bit - 1;
             if ((1 << i) & sbox_input)
             {
                 xor_u = xor_u ^ getBit(u, bit);
@@ -499,12 +490,12 @@ void* get_biases_for_key_space(void* args)
     }
 
     // for each possible key
-    for (int key = params.keystart; key < params.keyend; key++)
+    for (uint64_t key = params.keystart; key < params.keyend; key++)
     {
-        for (int i = 0; i < NUM_P_C_PAIRS; i++)
+        for (uint64_t i = 0; i < NUM_P_C_PAIRS; i++)
         {
             // check if the linear aproximation checks out for each pair of plaintext/ciphertext
-            int xor = get_xor(params.plaintexts[i], params.ciphertexts[i], key, params.cantBlocks, params.linear_aproximation);
+            uint64_t xor = get_xor(params.plaintexts[i], params.ciphertexts[i], key, params.cantBlocks, params.linear_aproximation);
             if (xor == 0)
             {
                 hits[key - params.keystart]++;
@@ -513,7 +504,7 @@ void* get_biases_for_key_space(void* args)
     }
 
     // calculate the resulting bias following the Piling-Up Lemma
-    for (int hit = params.keystart; hit < params.keyend; hit++)
+    for (uint64_t hit = params.keystart; hit < params.keyend; hit++)
     {
         hits[hit - params.keystart] = fabs(hits[hit - params.keystart] - (double)(NUM_P_C_PAIRS/(double)2)) / (double)(NUM_P_C_PAIRS);
     }
@@ -531,28 +522,28 @@ void* get_biases_for_key_space(void* args)
     return (void*)result;
 }
 
-double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation)
+double* get_biases(uint64_t plaintexts[], uint64_t ciphertexts[], struct state linear_aproximation)
 {
     // calculate how many key blocks must be brute forced
-    int cantBlocks = 0;
-    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    uint64_t cantBlocks = 0;
+    for (uint8_t sbox = 0; sbox < NUM_SBOXES; sbox++)
     {
-        int num = bits_to_num(linear_aproximation.position[sbox]);
+        uint64_t num = bits_to_num(linear_aproximation.position[sbox]);
         if (num > 0) cantBlocks++;
     }
 
     // calculate how many key bits must be brute forced
-    int key_bits = cantBlocks * SBOX_BITS;
-    unsigned long key_max = 1 << key_bits;
+    uint32_t key_bits = cantBlocks * SBOX_BITS;
+    uint64_t key_max = 1 << key_bits;
 
     // run in num_cores threads
-    int num_cores = get_nprocs_conf();
-    int sub_key_space = key_max / num_cores;
+    uint8_t num_cores = get_nprocs_conf();
+    uint64_t sub_key_space = key_max / num_cores;
     pthread_t t_ids[num_cores];
     struct threadParam param[num_cores];
     struct partialResult* results[num_cores];
 
-    for (int core = 0; core < num_cores; core++)
+    for (uint8_t core = 0; core < num_cores; core++)
     {
         param[core].keystart = sub_key_space * core;
         param[core].keyend = param[core].keystart + sub_key_space;
@@ -574,12 +565,12 @@ double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], stru
     }
 
     // get and combine the result for each thread
-    for (int core = 0; core < num_cores; core++)
+    for (uint8_t core = 0; core < num_cores; core++)
     {
         struct partialResult result = *results[core];
-        int start = result.keystart;
-        int end   = result.ketend;
-        for (int i = 0; i < (end - start); i++)
+        uint64_t start = result.keystart;
+        uint64_t end   = result.ketend;
+        for (uint64_t i = 0; i < (end - start); i++)
         {
             hits[start + i] = result.hits[i];
         }
@@ -599,9 +590,9 @@ void printState(struct state state)
     double biasTotal = state.biasesMult * (1 << (state.cantBiases - 1));
     printf("bias:%f\n", biasTotal);
 
-    for (int sbox = 0; sbox < NUM_SBOXES; sbox++)
+    for (uint8_t sbox = 0; sbox < NUM_SBOXES; sbox++)
     {
-        int input = bits_to_num(state.position[sbox]);
+        uint64_t input = bits_to_num(state.position[sbox]);
         if (input > 0)
         {
             printf("sbox:%d -> %d\n", sbox, input);
@@ -612,7 +603,7 @@ void printState(struct state state)
 
 void freeMem(struct state** linear_aproximations)
 {
-    for (int i = 0; i < ARR_SIZE; i++)
+    for (uint64_t i = 0; i < ARR_SIZE; i++)
     {
         if (linear_aproximations[i] != 0)
         {

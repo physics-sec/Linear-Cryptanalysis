@@ -10,43 +10,43 @@
 #define MAX_BLOCKS_TO_BF 3
 
 struct sbox_aprox {
-  unsigned char x, y;
+  uint8_t x, y;
   double bias;
 };
 
 struct state {
-  unsigned char first_sbox;
-  unsigned char first_x;
+  uint8_t first_sbox;
+  uint8_t first_x;
   double biasesMult;
-  unsigned char cantBiases;
-  unsigned char position[NUM_SBOXES][SBOX_BITS];
+  uint8_t cantBiases;
+  uint8_t position[NUM_SBOXES][SBOX_BITS];
 };
 
 struct step {
-  unsigned char from;
-  unsigned char to[NUM_SBOXES][SBOX_BITS];
+  uint8_t from;
+  uint8_t to[NUM_SBOXES][SBOX_BITS];
   struct sbox_aprox path;
 };
 
 struct partialResult {
-  int keystart;
-  int ketend;
+  uint64_t keystart;
+  uint64_t ketend;
   double* hits;;
 };
 
 struct threadParam {
-  int keystart;
-  int keyend;
-  int cantBlocks;
-  unsigned long* plaintexts;
-  unsigned long* ciphertexts;
+  uint64_t keystart;
+  uint64_t keyend;
+  uint64_t cantBlocks;
+  uint64_t* plaintexts;
+  uint64_t* ciphertexts;
   struct state linear_aproximation;
 };
 
 struct state** analize_cipher(void);
 void freeMem(struct state** linear_aproximations);
 void printState(struct state state);
-double* get_biases(unsigned long plaintexts[], unsigned long ciphertexts[], struct state linear_aproximation);
-int bits_to_num(unsigned char inputbits[]);
+double* get_biases(uint64_t plaintexts[], uint64_t ciphertexts[], struct state linear_aproximation);
+uint64_t bits_to_num(uint8_t inputbits[]);
 
 #endif
