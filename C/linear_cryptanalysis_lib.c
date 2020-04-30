@@ -53,7 +53,7 @@ uint64_t create_bias_table(struct sbox_aprox table[], uint64_t tablesize){
             // calculate the bias
             double bias = ((double)matches / (double)tablesize) - (double)0.5;
             // if the bias is greater than 0, save the 'x' and 'y' combination
-            if (bias > 0)
+            if (bias > MIN_BIAS)
             {
                 struct sbox_aprox elem;
                 elem.x = x;
@@ -184,9 +184,6 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], uint64_t
         for (uint64_t i = 0; i < tableSize; i++)
         {
             struct sbox_aprox s_aprox = bias_table[i];
-            // if the current bias is less than MIN_BIAS, discard it
-            if (s_aprox.bias < MIN_BIAS) continue;
-
             for (uint8_t pos_sbox = 0; pos_sbox < NUM_SBOXES; pos_sbox++)
             {
                 struct state* first_state = calloc(1, sizeof(struct state));
