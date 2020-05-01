@@ -23,8 +23,8 @@ def main():
     SBOX_BITS  = 6
     NUM_SBOXES = 6
     NUM_ROUNDS = 4
-    MIN_BIAS = 0.008
-    MAX_BLOCKS_TO_BF = 4
+    MIN_BIAS = 0.01
+    MAX_BLOCKS_TO_BF = 6
 
     lc_lib.initialize(NUM_P_C_PAIRS,
                       SBOX_BITS,

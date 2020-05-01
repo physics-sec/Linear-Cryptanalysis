@@ -56,7 +56,7 @@ def create_bias_table():
             # calculate the bias
             bias = (matches / tablesize) - 1/2
             # if the bias is greater than 0, save the 'x' and 'y' combination
-            if bias > 0:
+            if bias > MIN_BIAS:
                 table.append( [x, y, bias] )
 
     # return the table of biases that are greater than 0
@@ -135,6 +135,8 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
     if depth == NUM_ROUNDS:
         # delete elements that involve more than MAX_BLOCKS_TO_BF final sboxes
         current_states = [elem for elem in current_states if len(elem['state']) <= MAX_BLOCKS_TO_BF]
+        if len(current_states) == 0:
+            exit('No linear aproximations found! May be MIN_BIAS is too high or MAX_BLOCKS_TO_BF too low.')
         # return the linear aproximations that reach to no more than MAX_BLOCKS_TO_BF sboxes
         return current_states
 
@@ -173,6 +175,10 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
 
             # calculate all possible moves from 'curr_sbox'
             possible_step_per_sbox = {}
+            num_possible_step_per_sbox = {}
+            start_sboxes = {}
+            total_combinations = 1
+            num_start_sboxes = 0
             for curr_sbox in curr_pos:
 
                 inputs  = curr_pos[curr_sbox]
@@ -190,8 +196,15 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
 
                     possible_steps.append(step)
 
-                possible_step_per_sbox[curr_sbox] = possible_steps
+                num_possible_step_per_sbox[curr_sbox] = len(possible_steps)
+                if len(possible_steps) > 0:
+                   total_combinations *= len(possible_steps)
+                   possible_step_per_sbox[curr_sbox] = possible_steps
+                   start_sboxes[num_start_sboxes] = curr_sbox
+                   num_start_sboxes += 1
 
+            if total_combinations == 0:
+                continue
 
             # combine all the possible choises of each sbox in all possible ways
             # for example, if there are 2 sboxes and each has 4 possible moves
@@ -199,30 +212,24 @@ def get_linear_aproximations(bias_table, current_states=None, depth=1):
 
             possible_steps_combinations = []
 
-            # initialize the possible_steps_combinations array
-            # with all the first sbox's possible steps
-            first_sbox = list(possible_step_per_sbox.keys())[0]
-            for possible_step in possible_step_per_sbox[first_sbox]:
-                step = possible_step
-                possible_steps_combinations.append( [step] )
+            for comb_num in range(total_combinations):
+                new_comb = []
+                new_comb.append( possible_step_per_sbox[start_sboxes[0]][comb_num % num_possible_step_per_sbox[start_sboxes[0]]] )
 
-            # for each 'curr_sbox' that is not 'first_sbox'...
-            for curr_sbox in possible_step_per_sbox:
-                if curr_sbox == first_sbox:
-                    continue
+                for sbox in start_sboxes:
+                    if sbox == 0:
+                        continue
+                    real_sbox = start_sboxes[sbox]
 
-                # save the combinations calcualted so far
-                combinations_so_far = possible_steps_combinations
-                possible_steps_combinations = []
+                    mod = 1
+                    for prev_sbox in range(sbox):
+                        mod *= num_possible_step_per_sbox[start_sboxes[prev_sbox]]
 
-                # add each curr_sbox's possible step to the possible_steps_combinations array
-                for possible_step in possible_step_per_sbox[curr_sbox]:
+                    index = (comb_num / mod) % num_possible_step_per_sbox[real_sbox]
+                    index = int(index)
 
-                    for step_taken in combinations_so_far:
-
-                        add_step = step_taken.copy()
-                        add_step.append(possible_step)
-                        possible_steps_combinations.append( add_step )
+                    new_comb.append( possible_step_per_sbox[real_sbox][index] )
+                possible_steps_combinations.append(new_comb)
 
             # now, for each combination, check to which sboxes we reached and what are their inputs
             # this will be the next state
@@ -268,7 +275,7 @@ def analize_cipher():
     table_sorted = sorted(table, key=lambda elem: fabs(elem[2]), reverse=True)
 
     # take the best max_size results (so that the following algorithm finishes quickly)
-    max_size = 100
+    max_size = 300
     table_len = len(table_sorted)
     if table_len > max_size:
         print('\n[*] reducing bias table size from {:d} to {:d}\n'.format(table_len, max_size))
