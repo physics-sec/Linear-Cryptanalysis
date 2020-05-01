@@ -165,7 +165,15 @@ struct state** resize(struct state* states[])
 struct state** get_linear_aproximations(struct sbox_aprox bias_table[], uint64_t tableSize, struct state* current_states[], uint64_t depth)
 {
     // run for NUM_ROUNDS - 1 times
-    if (depth == NUM_ROUNDS) return current_states;
+    if (depth == NUM_ROUNDS)
+    {
+        if (current_states[0] == 0)
+        {
+            printf("No linear aproximations found! May be MIN_BIAS is too high.\n");
+            exit(1);
+        }
+        return current_states;
+    }
 
     // at the beginnig, only one sbox can be chosen
     // (this could be done differently)
@@ -269,11 +277,7 @@ struct state** get_linear_aproximations(struct sbox_aprox bias_table[], uint64_t
                 }                
             }
 
-            if(cant_start_sboxes == 0)
-            {
-                printf("there are no possible paths! Too few linear aproximations?");
-                exit(1);
-            }
+            if(cant_start_sboxes == 0) continue;
 
             // combine all the possible choises of each sbox in all possible ways
             // for example, if there are 2 sboxes and each has 4 possible moves
